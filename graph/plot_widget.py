@@ -2,7 +2,7 @@ from pyqtgraph import PlotWidget, PlotDataItem, DateAxisItem, ViewBox, LinearReg
 from PyQt6.QtGui import QAction, QCursor, QKeySequence
 from PyQt6.QtCore import QPointF, pyqtSignal, Qt
 import numpy as np
-from datetime import datetime,timezone, timedelta
+from datetime import datetime, timezone, timedelta
 
 from PyQt6.QtWidgets import QMainWindow, QApplication
 from .color import colors
@@ -26,14 +26,25 @@ def gen_data():
     return data
 
 class ScatterPlot(PlotWidget):
-    # trace_added = pyqtSignal(str,str)
+    """A custom scatter plot widget with interactive features."""
+
     time_region_added = pyqtSignal(str, str, int)
     time_region_changed = pyqtSignal(str, str, int)
+
     def __init__(self, 
                  trace_table:ButtonTable, 
                  near_table:NearTable, 
                  time_selections:TimeTable,
                  roi_table:ROITable):
+        """
+        Initializes the ScatterPlot.
+
+        Args:
+            trace_table (ButtonTable): Table for managing traces.
+            near_table (NearTable): Table for displaying nearby points.
+            time_selections (TimeTable): Table for time selections.
+            roi_table (ROITable): Table for ROI selections.
+        """
         super().__init__()
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.trace_table = trace_table
@@ -46,9 +57,11 @@ class ScatterPlot(PlotWidget):
         self.init_actions()
     
     def reset_v_select(self):
+        """Resets the vertical selection state."""
         self.initial = None
         
     def init_variables(self):
+        """Initializes internal variables."""
         self.traces = dict()
         self.time_start = None
         self.initial = None
@@ -56,6 +69,7 @@ class ScatterPlot(PlotWidget):
         self.time_region_next_id = 0
 
     def init_actions(self):
+        """Initializes actions and shortcuts."""
         get_coords = QAction("mouse coords",self)
         get_coords.setShortcut(QKeySequence("Shift+Z"))
         get_coords.triggered.connect(self.near_mouse_table)
@@ -76,10 +90,17 @@ class ScatterPlot(PlotWidget):
         auto_range.triggered.connect(self.autoRange)
         self.addAction(auto_range)
     def demo(self):
+        """Generates demo data for the plot."""
         for i in range(48):
             self.plot_data(i)  
     
     def plot_data(self,i):
+        """
+        Plots data for a given trace index.
+
+        Args:
+            i (int): Trace index.
+        """
         x = np.array(gen_data())
         y = np.diff(x)
         x=x[1:]
@@ -92,31 +113,42 @@ class ScatterPlot(PlotWidget):
         self.addItem(data)
 
     def contrast_mode(self):
+        """Switches to contrast mode for traces."""
         for key in self.traces.keys():
             trace:PlotDataItem = self.traces[key]["trace"]
             trace.setSymbolBrush("white")
             trace.setOpacity(.5)
     
     def color_mode(self):
+        """Switches to color mode for traces."""
         for key in self.traces.keys():
             trace:PlotDataItem = self.traces[key]["trace"]
             trace.setSymbolBrush(colors[self.traces[key]["i"]])
             trace.setOpacity(1)
 
     def hide_trace(self,trace:PlotDataItem):
+        """
+        Toggles the visibility of a trace.
+
+        Args:
+            trace (PlotDataItem): The trace to toggle.
+        """
         trace.setVisible(not trace.isVisible())
 
     def get_coords(self):
-        """Handles mouse movement and prints coordinates in graph space."""
-        
+        """
+        Gets the current mouse coordinates in graph space.
+
+        Returns:
+            QPointF: The mouse coordinates.
+        """
         pos = QPointF(self.mapFromGlobal(QCursor().pos()))
         if self.sceneBoundingRect().contains(pos):
             mouse_point = self.getViewBox().mapSceneToView(pos)
             return mouse_point
     
     def near_mouse_table(self):
-        """Handles mouse movement and prints coordinates in graph space."""
-        
+        """Populates the near table with points close to the mouse cursor."""
         vb: ViewBox = self.getViewBox()
         view_range = vb.getState()["viewRange"]
         xrange, yrange = view_range
@@ -151,6 +183,7 @@ class ScatterPlot(PlotWidget):
                         self.near_table.new_row(color,name,x_n_range[i],y_n_range[i])
     
     def add_time_selection(self):
+        """Adds a time selection region."""
         if self.time_start is None:
             coords = self.get_coords()
             if coords:
@@ -179,6 +212,12 @@ class ScatterPlot(PlotWidget):
                 self.time_start = None
     
     def change_time_region(self, linear_region:LinearRegionItem):
+        """
+        Handles changes to a time region.
+
+        Args:
+            linear_region (LinearRegionItem): The changed region.
+        """
         key = None
         for k in self.time_regions.keys():
             if linear_region is self.time_regions[k]["tr"]:
@@ -195,6 +234,12 @@ class ScatterPlot(PlotWidget):
         self.time_region_changed.emit(start_string, stop_string, key)
 
     def remove_time_selection(self, trid):
+        """
+        Removes a time selection region.
+
+        Args:
+            trid (int): The ID of the time region to remove.
+        """
         item  = self.time_regions.pop(trid)
         region = item["tr"]
         self.removeItem(region)
@@ -204,6 +249,7 @@ class ScatterPlot(PlotWidget):
         self.roi_table.setRowCount(0)
     
     def add_roi(self):
+        """Adds a vertical ROI within a time region."""
         trid = self.time_selections.id_from_selection()
         if trid is not None:
             region = self.time_regions[trid]["tr"]
@@ -241,10 +287,18 @@ class ScatterPlot(PlotWidget):
             v_select.roi_changed.emit()
     
     def remove_roi(self, trid,roi_id):
+        """
+        Removes a vertical ROI.
+
+        Args:
+            trid (int): The ID of the associated time region.
+            roi_id (int): The ID of the ROI to remove.
+        """
         roi  = self.time_regions[trid]["vl"].pop(roi_id)
         self.removeItem(roi)
 
     def show_roi(self):
+        """Displays ROIs for the selected time region."""
         trid = self.time_selections.id_from_selection()
         if trid is None:
             return
@@ -260,11 +314,20 @@ class ScatterPlot(PlotWidget):
                 self.roi_table.insert_roi(round(y,3),round(y2,3), trid, k)
     
     def setview(self, top, bottom, left, right):
+        """
+        Sets the view range of the plot.
+
+        Args:
+            top (float): Top boundary.
+            bottom (float): Bottom boundary.
+            left (float): Left boundary.
+            right (float): Right boundary.
+        """
         view_box = self.getViewBox()
         view_box.setRange(xRange=(left, right), yRange=(bottom, top))
 
 
 
-        
+
 
 

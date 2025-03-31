@@ -1,9 +1,9 @@
 import pyqtgraph
-from PyQt6.QtWidgets import QMainWindow, QApplication,QDockWidget, QTextEdit
+from PyQt6.QtWidgets import QMainWindow, QApplication, QDockWidget, QTextEdit
 from PyQt6.QtGui import QAction, QCursor, QKeySequence
-from  PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt
 import numpy as np
-from datetime import datetime,timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from .plot_widget import ScatterPlot
@@ -14,7 +14,10 @@ from .special_regions import BoundROI
 
 
 class GraphWindow(QMainWindow):
+    """Main window for the graph application."""
+
     def __init__(self):
+        """Initializes the GraphWindow."""
         super().__init__()
 
         menu = self.menuBar()
@@ -56,6 +59,7 @@ class GraphWindow(QMainWindow):
         
 
     def init_docks(self):
+        """Initializes dock widgets for the main window."""
         self.setCentralWidget(self.plot)
         
         dock = QDockWidget("Dockable Widget", self)
@@ -75,5 +79,4 @@ class GraphWindow(QMainWindow):
         
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, traces_doc)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
-    
-    
+
