@@ -9,7 +9,7 @@ from .color import colors
 from .trace_table import ButtonTable
 from .mouse_near_table import NearTable
 from .special_regions import TimeRegion, BoundROI
-from .linked_table import TimeTable
+from .linked_table import TimeTable, ROITable
 
 def gen_data():
     stop = datetime.now().astimezone(timezone.utc)
@@ -29,12 +29,17 @@ class ScatterPlot(PlotWidget):
     # trace_added = pyqtSignal(str,str)
     time_region_added = pyqtSignal(str, str, int)
     time_region_changed = pyqtSignal(str, str, int)
-    def __init__(self, trace_table:ButtonTable, near_table: NearTable, time_selections:TimeTable):
+    def __init__(self, 
+                 trace_table:ButtonTable, 
+                 near_table:NearTable, 
+                 time_selections:TimeTable,
+                 roi_table:ROITable):
         super().__init__()
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.trace_table = trace_table
         self.near_table = near_table
         self.time_selections  = time_selections
+        self.roi_table = roi_table
         self.setAxisItems({"bottom":DateAxisItem(utcOffset=0)})
         self.time_selections.itemSelectionChanged.connect(self.reset_v_select)
         self.init_variables()
@@ -66,7 +71,10 @@ class ScatterPlot(PlotWidget):
         v_region.triggered.connect(self.add_roi)
         self.addAction(v_region)
 
-        
+        auto_range = QAction("Auto Range",self)
+        auto_range.setShortcut(QKeySequence("Shift+A"))
+        auto_range.triggered.connect(self.autoRange)
+        self.addAction(auto_range)
     def demo(self):
         for i in range(48):
             self.plot_data(i)  
@@ -166,14 +174,14 @@ class ScatterPlot(PlotWidget):
                 lr.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
                 self.addItem(lr)
 
-                self.time_regions[trid] = lr
+                self.time_regions[trid] = {"tr": lr,"vl":dict(),"vc":0}
                 self.time_region_next_id += 1
                 self.time_start = None
     
     def change_time_region(self, linear_region:LinearRegionItem):
         key = None
         for k in self.time_regions.keys():
-            if linear_region is self.time_regions[k]:
+            if linear_region is self.time_regions[k]["tr"]:
                 key = k
         
         if key is None:
@@ -187,13 +195,18 @@ class ScatterPlot(PlotWidget):
         self.time_region_changed.emit(start_string, stop_string, key)
 
     def remove_time_selection(self, trid):
-        region  = self.time_regions.pop(trid)
+        item  = self.time_regions.pop(trid)
+        region = item["tr"]
         self.removeItem(region)
+        for roi in item["vl"].values():
+            self.removeItem(roi)
+        self.roi_table.clearContents()
+        self.roi_table.setRowCount(0)
     
     def add_roi(self):
         trid = self.time_selections.id_from_selection()
         if trid is not None:
-            region = self.time_regions[trid]
+            region = self.time_regions[trid]["tr"]
         else:
             return
 
@@ -212,9 +225,43 @@ class ScatterPlot(PlotWidget):
             low, high  = self.initial, y
             if low>high:
                 low, high = high, low
-            v_select = BoundROI(high, low, region)
+            count = self.time_regions[trid]["vc"]
+            v_select = BoundROI(high, low, region, count)
+            v_select.roi_changed.connect(self.show_roi)
+            
             self.addItem(v_select)
+            
+            
+            self.time_regions[trid]["vl"][count] = v_select
+            self.time_regions[trid]["vc"]+=1
             self.initial=None
+            v_select.clicked.connect(lambda: self.roi_table.select_row_from_roi_id(count))
+            v_select.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
+
+            v_select.roi_changed.emit()
+    
+    def remove_roi(self, trid,roi_id):
+        roi  = self.time_regions[trid]["vl"].pop(roi_id)
+        self.removeItem(roi)
+
+    def show_roi(self):
+        trid = self.time_selections.id_from_selection()
+        if trid is None:
+            return
+        vert_dict = self.time_regions[trid]["vl"]
+        self.roi_table.clearContents()
+        self.roi_table.setRowCount(0)
+        if vert_dict:
+            for k in vert_dict.keys():
+                roi: BoundROI = vert_dict[k]
+                y = roi.pos()[1]
+                dy = roi.size()[1]
+                y2 = y+dy
+                self.roi_table.insert_roi(round(y,3),round(y2,3), trid, k)
+    
+    def setview(self, top, bottom, left, right):
+        view_box = self.getViewBox()
+        view_box.setRange(xRange=(left, right), yRange=(bottom, top))
 
 
 
