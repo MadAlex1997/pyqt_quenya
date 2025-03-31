@@ -13,5 +13,26 @@ class TimeRegion(LinearRegionItem):
 
 
 class BoundROI(ROI):
-    def __init__(self, pos, size, angle=0, invertible=False, maxBounds=None, snapSize=1, scaleSnap=False, translateSnap=False, rotateSnap=False, parent=None, pen=None, hoverPen=None, handlePen=None, handleHoverPen=None, movable=True, rotatable=True, resizable=True, removable=False, aspectLocked=False, antialias=True):
-        super().__init__(pos, size, angle, invertible, maxBounds, snapSize, scaleSnap, translateSnap, rotateSnap, parent, pen, hoverPen, handlePen, handleHoverPen, movable, rotatable, resizable, removable, aspectLocked, antialias)
+    def __init__(self, top, bottom, region:TimeRegion):
+        self.region = region
+        if bottom>top:
+            top, bottom = bottom, top
+        self.top = top
+        self.bottom = bottom
+        self.left, self.right = region.getRegion()
+
+        pos = [self.left,self.bottom]
+        size = [self.right-self.left, self.top-self.bottom]
+        print(pos, size)
+        super().__init__(pos, size)
+        self.region.sigRegionChanged.connect(self.reshape)
+
+    def reshape(self):
+        self.left, self.right = self.region.getRegion()
+
+        pos = [self.left,self.bottom]
+        size = [self.right-self.left, self.top-self.bottom]
+        # print(pos, size)
+        self.setSize(size)
+        self.setPos(pos)
+        

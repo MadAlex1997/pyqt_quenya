@@ -48,6 +48,7 @@ class TimeTable(QTableWidget):
         selected = self.selectedIndexes()[0]
         start = self.takeItem(selected.row(),0)
         self.removeRow(selected.row())
+        self.clearSelection()
 
         key = None
         for k in self.row_info.keys():
@@ -60,11 +61,26 @@ class TimeTable(QTableWidget):
             self.row_info.pop(key)
             self.time_selection_deleted.emit(key)
 
+    def id_from_selection(self):
+        selected = self.selectedIndexes()
+        if selected:
+            selected = selected[0]
+            start = self.itemFromIndex(selected)
+            
+
+            key = None
+            for k in self.row_info.keys():
+                if self.row_info[k]["start"] is start:
+                    key = k
+                    print(key)
+                    break
+            
+            return key
 
 
     def select_row_from_time_id(self, time_id):
         idx = self.indexFromItem(self.row_info[time_id]["start"])
         
         self.selectRow(idx.row())
-
+        
     

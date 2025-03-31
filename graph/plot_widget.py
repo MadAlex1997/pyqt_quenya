@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QMainWindow, QApplication
 from .color import colors
 from .trace_table import ButtonTable
 from .mouse_near_table import NearTable
-from .special_regions import TimeRegion
+from .special_regions import TimeRegion, BoundROI
 from .linked_table import TimeTable
 
 def gen_data():
@@ -36,13 +36,17 @@ class ScatterPlot(PlotWidget):
         self.near_table = near_table
         self.time_selections  = time_selections
         self.setAxisItems({"bottom":DateAxisItem(utcOffset=0)})
+        self.time_selections.itemSelectionChanged.connect(self.reset_v_select)
         self.init_variables()
         self.init_actions()
-        
+    
+    def reset_v_select(self):
+        self.initial = None
         
     def init_variables(self):
         self.traces = dict()
         self.time_start = None
+        self.initial = None
         self.time_regions = dict()
         self.time_region_next_id = 0
 
@@ -56,6 +60,11 @@ class ScatterPlot(PlotWidget):
         time_region.setShortcut(QKeySequence("Shift+C"))
         time_region.triggered.connect(self.add_time_selection)
         self.addAction(time_region)
+
+        v_region = QAction("make v selection",self)
+        v_region.setShortcut(QKeySequence("Shift+X"))
+        v_region.triggered.connect(self.add_roi)
+        self.addAction(v_region)
 
         
     def demo(self):
@@ -147,7 +156,7 @@ class ScatterPlot(PlotWidget):
                     start, stop = stop, start
                 start_string = datetime.fromtimestamp(round(start,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
                 stop_string = datetime.fromtimestamp(round(stop,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
-                trid = self.time_region_next_id+0
+                trid = self.time_region_next_id + 0
                 
                 lr = TimeRegion((start, stop),trid)
                 lr.sigRegionChanged.connect(self.change_time_region)
@@ -158,7 +167,7 @@ class ScatterPlot(PlotWidget):
                 self.addItem(lr)
 
                 self.time_regions[trid] = lr
-                self.time_region_next_id+=1
+                self.time_region_next_id += 1
                 self.time_start = None
     
     def change_time_region(self, linear_region:LinearRegionItem):
@@ -180,6 +189,35 @@ class ScatterPlot(PlotWidget):
     def remove_time_selection(self, trid):
         region  = self.time_regions.pop(trid)
         self.removeItem(region)
+    
+    def add_roi(self):
+        trid = self.time_selections.id_from_selection()
+        if trid is not None:
+            region = self.time_regions[trid]
+        else:
+            return
+
+        coords = self.get_coords()
+        x,y = coords.x(), coords.y()
+        left, right = region.getRegion()
+        
+        if left <= x <= right:
+            pass
+        else:
+            return
+        
+        if self.initial is None:
+            self.initial = y
+        else:
+            low, high  = self.initial, y
+            if low>high:
+                low, high = high, low
+            v_select = BoundROI(high, low, region)
+            self.addItem(v_select)
+            self.initial=None
+
+
+
         
 
 
