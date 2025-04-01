@@ -28,8 +28,10 @@ class GraphWindow(QMainWindow):
         selections_menu = menu.addMenu("Selections")
         delete_selected_times = selections_menu.addAction("Delete Selected Times")
         delete_selected_times.setShortcut(QKeySequence("Shift+Del"))
-        delete_selected_roi = selections_menu.addAction("Delete Selected Times")
+        delete_selected_roi = selections_menu.addAction("Delete Selected ROI")
         delete_selected_roi.setShortcut(QKeySequence("Del"))
+        split_selected_time = selections_menu.addAction("Split Selected Times")
+        split_selected_time.setShortcut(QKeySequence("Shift+S"))
 
         self.trace_table = ButtonTable(12)
         self.near_table = NearTable()
@@ -46,7 +48,9 @@ class GraphWindow(QMainWindow):
 
         delete_selected_times.triggered.connect(self.time_selections.delete_row)
         delete_selected_roi.triggered.connect(self.roi_table.delete_row)
-        
+
+        split_selected_time.triggered.connect(self.plot.split_selection)
+
         self.plot.time_region_added.connect(self.time_selections.insert_time_selection)
         self.plot.time_region_changed.connect(self.time_selections.update_table)
         self.time_selections.time_selection_deleted.connect(self.plot.remove_time_selection)

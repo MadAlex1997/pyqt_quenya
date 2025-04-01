@@ -184,6 +184,25 @@ class ScatterPlot(PlotWidget):
                     for i in range(len(x_n_range)):
                         self.near_table.new_row(color,name,x_n_range[i],y_n_range[i])
     
+    def _time_selection(self,start, stop):
+        if start > stop:
+            start, stop = stop, start
+        
+        start_string = datetime.fromtimestamp(round(start,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+        stop_string = datetime.fromtimestamp(round(stop,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+        trid = self.time_region_next_id + 0
+        
+        lr = TimeRegion((start, stop),trid)
+        lr.sigRegionChanged.connect(self.change_time_region)
+        
+
+        self.time_region_added.emit(start_string,stop_string,trid)
+        lr.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
+        self.addItem(lr)
+
+        self.time_regions[trid] = {"tr": lr,"vl":dict(),"vc":0}
+        self.time_region_next_id += 1
+
     def add_time_selection(self):
         """Adds a time selection region."""
         if self.time_start is None:
@@ -195,22 +214,7 @@ class ScatterPlot(PlotWidget):
             if coords:
                 start = self.time_start
                 stop = coords.x()
-                if start > stop:
-                    start, stop = stop, start
-                start_string = datetime.fromtimestamp(round(start,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
-                stop_string = datetime.fromtimestamp(round(stop,3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
-                trid = self.time_region_next_id + 0
-                
-                lr = TimeRegion((start, stop),trid)
-                lr.sigRegionChanged.connect(self.change_time_region)
-                
-
-                self.time_region_added.emit(start_string,stop_string,trid)
-                lr.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
-                self.addItem(lr)
-
-                self.time_regions[trid] = {"tr": lr,"vl":dict(),"vc":0}
-                self.time_region_next_id += 1
+                self._time_selection(start, stop)
                 self.time_start = None
     
     def change_time_region(self, linear_region:LinearRegionItem):
@@ -250,6 +254,23 @@ class ScatterPlot(PlotWidget):
         self.roi_table.clearContents()
         self.roi_table.setRowCount(0)
     
+    def _roi(self, high,low, trid, region):
+        if low>high:
+            low, high = high, low
+        count = self.time_regions[trid]["vc"]
+        v_select = BoundROI(high, low, region, count)
+        v_select.roi_changed.connect(self.show_roi)
+        
+        self.addItem(v_select)
+        
+        
+        self.time_regions[trid]["vl"][count] = v_select
+        self.time_regions[trid]["vc"]+=1
+        
+        v_select.clicked.connect(lambda: self.roi_table.select_row_from_roi_id(count))
+        v_select.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
+        v_select.roi_changed.emit()
+
     def add_roi(self):
         """Adds a vertical ROI within a time region."""
         trid = self.time_selections.id_from_selection()
@@ -271,22 +292,9 @@ class ScatterPlot(PlotWidget):
             self.initial = y
         else:
             low, high  = self.initial, y
-            if low>high:
-                low, high = high, low
-            count = self.time_regions[trid]["vc"]
-            v_select = BoundROI(high, low, region, count)
-            v_select.roi_changed.connect(self.show_roi)
-            
-            self.addItem(v_select)
-            
-            
-            self.time_regions[trid]["vl"][count] = v_select
-            self.time_regions[trid]["vc"]+=1
+            self._roi(high,low,trid,region)
             self.initial=None
-            v_select.clicked.connect(lambda: self.roi_table.select_row_from_roi_id(count))
-            v_select.clicked.connect(lambda: self.time_selections.select_row_from_time_id(trid))
-
-            v_select.roi_changed.emit()
+            
     
     def remove_roi(self, trid,roi_id):
         """
@@ -362,6 +370,40 @@ class ScatterPlot(PlotWidget):
         
         view_box.setRange(xRange=(left, right), yRange=(bottom, top))
 
+    def split_selection(self):
+        """Splits the current selection."""
+        orig_trid = self.time_selections.id_from_selection()
+        if orig_trid is None:
+            return
+        original = self.time_regions[orig_trid]
+        region = original["tr"]
+        left, right = region.getRegion()
+        start = left
+        stop = right - (right-left)/2
+        if start > stop:
+            start, stop = stop, start
+        trid = self.time_region_next_id + 0
+        
+        self._time_selection(start,stop)
+        new_region = self.time_regions[trid]["tr"]
+        for roi in original["vl"].values():
+            top, bottom = roi.top,roi.bottom
+            self._roi(top, bottom, trid, new_region)
+        
+        start = left + (right-left)/2
+        stop = right
+        if start > stop:
+            start, stop = stop, start
+        trid = self.time_region_next_id + 0
+        
+        self._time_selection(start,stop)
+        new_region = self.time_regions[trid]["tr"]
+        for roi in original["vl"].values():
+            top, bottom = roi.top,roi.bottom
+            self._roi(top, bottom, trid, new_region)
+        
+        self.time_selections.delete_row()
+        
 
 
 

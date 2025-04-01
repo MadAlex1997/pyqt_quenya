@@ -31,7 +31,7 @@ class BoundROI(ROI):
     """A rectangular ROI bound to a TimeRegion."""
 
     roi_changed = pyqtSignal()
-    clicked = pyqtSignal(int, int)
+    clicked = pyqtSignal(int)
 
     def __init__(self, top, bottom, region: TimeRegion, roi_id):
         """
