@@ -6,6 +6,7 @@ class TimeTable(QTableWidget):
     """A table widget for managing time selections."""
 
     time_selection_deleted = pyqtSignal(int)
+    doubleclick = pyqtSignal(int)
 
     def __init__(self, parent=None):
         """
@@ -121,13 +122,16 @@ class TimeTable(QTableWidget):
         
         self.selectRow(idx.row())
     
+    def mouseDoubleClickEvent(self, e):
+        super().mouseDoubleClickEvent(e)
+        self.doubleclick.emit(self.id_from_selection())
     
 
 class ROITable(QTableWidget):
     """A table widget for managing ROIs."""
 
     roi_deleted = pyqtSignal(int, int)
-
+    doubleclick = pyqtSignal(int, int)
     def __init__(self, parent=None):
         """
         Initializes the ROITable.
@@ -215,4 +219,21 @@ class ROITable(QTableWidget):
         if roi_id in self.row_info.keys(): 
             idx = self.indexFromItem(self.row_info[roi_id]["low"])
             self.selectRow(idx.row())
-
+    
+    def mouseDoubleClickEvent(self, e):
+        super().mouseDoubleClickEvent(e)
+        selected = self.selectedIndexes()
+        if selected:
+            selected = selected[0]
+        else:
+            return
+        low = self.itemFromIndex(selected)
+        
+        key = None
+        for k in self.row_info.keys():
+            if self.row_info[k]["low"] is low:
+                key = k
+                print(key)
+                break
+        
+        self.doubleclick.emit(self.time_id, key)

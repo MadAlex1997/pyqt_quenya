@@ -89,6 +89,8 @@ class ScatterPlot(PlotWidget):
         auto_range.setShortcut(QKeySequence("Shift+A"))
         auto_range.triggered.connect(self.autoRange)
         self.addAction(auto_range)
+
+        
     def demo(self):
         """Generates demo data for the plot."""
         for i in range(48):
@@ -313,7 +315,7 @@ class ScatterPlot(PlotWidget):
                 y2 = y+dy
                 self.roi_table.insert_roi(round(y,3),round(y2,3), trid, k)
     
-    def setview(self, top, bottom, left, right):
+    def setview_time_select(self, trid):
         """
         Sets the view range of the plot.
 
@@ -324,6 +326,40 @@ class ScatterPlot(PlotWidget):
             right (float): Right boundary.
         """
         view_box = self.getViewBox()
+        region = self.time_regions[trid]["tr"]
+        left, right = region.getRegion()
+        top_sel = 0
+        bottom_sel = 1e10
+        for roi in self.time_regions[trid]["vl"].values():
+            roi: BoundROI = roi
+            top_sel = max(top_sel, roi.top)
+            bottom_sel = min(bottom_sel, roi.bottom)
+             
+        view_box.setRange(xRange=(left, right), yRange=(bottom_sel, top_sel))
+
+    def setview_roi(self, trid, roi_id):
+        """
+        Sets the view range of the plot.
+
+        Args:
+            top (float): Top boundary.
+            bottom (float): Bottom boundary.
+            left (float): Left boundary.
+            right (float): Right boundary.
+        """
+        view_box = self.getViewBox()
+        view_box = self.getViewBox()
+        region = self.time_regions[trid]["tr"]
+        left, right = region.getRegion()
+        roi = self.time_regions[trid]["vl"][roi_id]
+        top = roi.top
+        bottom = roi.bottom
+        if bottom>top:
+            top, bottom = bottom, top
+        
+        if left>right:
+            left, right = right, left
+        
         view_box.setRange(xRange=(left, right), yRange=(bottom, top))
 
 

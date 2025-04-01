@@ -80,4 +80,4 @@ class ButtonTable(QTableWidget):
         return QIcon(pixmap)
 
     # def on_button_click(self, row: int, col: int):
-    #     print(f"Button clicked at Row: {row}, Column: {col}")
+    #     #print(f"Button clicked at Row: {row}, Column: {col}")

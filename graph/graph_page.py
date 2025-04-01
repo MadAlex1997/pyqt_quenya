@@ -52,7 +52,9 @@ class GraphWindow(QMainWindow):
         self.time_selections.time_selection_deleted.connect(self.plot.remove_time_selection)
         self.roi_table.roi_deleted.connect(self.plot.remove_roi)
         self.time_selections.itemSelectionChanged.connect(self.plot.show_roi)
-        
+
+        self.time_selections.doubleclick.connect(self.plot.setview_time_select)
+        self.roi_table.doubleclick.connect(self.plot.setview_roi)        
         # self.plot.trace_added.connect(self.trace_table.add_button)
         self.plot.demo()
         self.init_docks()

@@ -31,7 +31,7 @@ class BoundROI(ROI):
     """A rectangular ROI bound to a TimeRegion."""
 
     roi_changed = pyqtSignal()
-    clicked = pyqtSignal(int)
+    clicked = pyqtSignal(int, int)
 
     def __init__(self, top, bottom, region: TimeRegion, roi_id):
         """
@@ -53,7 +53,7 @@ class BoundROI(ROI):
 
         pos = [self.left,self.bottom]
         size = [self.right-self.left, self.top-self.bottom]
-        print(pos, size)
+        #print(pos, size)
         self.edditable = True
         super().__init__(pos, size)
         self.edditable = False
@@ -69,7 +69,7 @@ class BoundROI(ROI):
             event: The mouse event.
         """
         super().mouseClickEvent(event)
-        print("roi double click")
+        #print("roi double click")
         self.clicked.emit(self.roi_id)
 
     def reshape(self):
@@ -102,6 +102,8 @@ class BoundROI(ROI):
             
         else:
             super().setPos(pos, y, update, finish)
+        self.bottom = self.pos()[1]
+        self.top = self.bottom + self.size()[1]
         self.roi_changed.emit()
 
     def setSize(self, size, center=None, centerLocal=None, snap=False, update=True, finish=True):
